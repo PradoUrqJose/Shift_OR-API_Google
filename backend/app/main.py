@@ -23,7 +23,7 @@ app = FastAPI(
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://*.vercel.app", "https://shift-or-api-google.vercel.app", "https://sistema-turnos-frontend.vercel.app", "https://sistema-programacion-turnos-frontend.vercel.app"],
+    allow_origins=["http://localhost:3000", "https://*.vercel.app", "https://shift-or-api-google.vercel.app", "https://shift-or-api-google-git-main-bertos-projects-32566259.vercel.app", "https://sistema-turnos-frontend.vercel.app", "https://sistema-programacion-turnos-frontend.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
