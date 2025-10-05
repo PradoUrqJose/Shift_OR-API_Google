@@ -1,22 +1,8 @@
 {
-  "builds": [
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
-  "env": {
-    "VITE_SUPABASE_URL": "https://ptswajayeuqdcepvvugg.supabase.co",
-    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0c3dhamF5ZXVxZGNlcHZ2dWdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2MzE0MzksImV4cCI6MjA3NTIwNzQzOX0.EfAeQlu_cc7RsT4ABT8OMOOwQKj6m6_oLRtF1lGGpOE",
-    "VITE_API_URL": "https://backend-restless-pond-1420.fly.dev"
-  }
+  ]
 }
