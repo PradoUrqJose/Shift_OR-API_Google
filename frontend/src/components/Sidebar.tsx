@@ -44,9 +44,8 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 shadow-xl border-r border-gray-200 dark:border-gray-700 transform transition-all duration-300 ease-in-out
-        lg:translate-x-0 lg:static lg:inset-0
-        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        sidebar-responsive
+        ${mobileMenuOpen ? 'open' : ''}
       `}>
         {/* Header */}
         <div className="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-primary-600 to-primary-700">

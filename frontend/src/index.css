@@ -45,6 +45,13 @@
     @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 transform hover:scale-105 active:scale-95;
   }
   
+  /* Responsive Button Sizes */
+  @media (max-width: 640px) {
+    .btn {
+      @apply px-3 py-1.5 text-sm;
+    }
+  }
+  
   .btn-primary {
     @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-lg hover:shadow-xl;
   }
@@ -217,5 +224,174 @@
   .print-table th {
     background-color: #f8fafc;
     font-weight: bold;
+  }
+}
+
+/* Responsive Design Enhancements */
+@layer utilities {
+  /* Mobile-first responsive utilities */
+  .container-responsive {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  /* Responsive grid layouts */
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6;
+  }
+  
+  .grid-responsive-2 {
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-6;
+  }
+  
+  .grid-responsive-3 {
+    @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6;
+  }
+  
+  /* Responsive text sizes */
+  .text-responsive-xl {
+    @apply text-2xl sm:text-3xl lg:text-4xl;
+  }
+  
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+  
+  .text-responsive-base {
+    @apply text-sm sm:text-base;
+  }
+  
+  /* Responsive spacing */
+  .space-responsive {
+    @apply space-y-4 sm:space-y-6 lg:space-y-8;
+  }
+  
+  .p-responsive {
+    @apply p-4 sm:p-6 lg:p-8;
+  }
+  
+  .px-responsive {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+  
+  .py-responsive {
+    @apply py-4 sm:py-6 lg:py-8;
+  }
+  
+  /* Responsive card layouts */
+  .card-responsive {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6;
+  }
+  
+  /* Responsive table */
+  .table-responsive {
+    @apply w-full overflow-x-auto;
+  }
+  
+  .table-responsive table {
+    @apply min-w-full divide-y divide-gray-200 dark:divide-gray-700;
+  }
+  
+  /* Responsive form layouts */
+  .form-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
+  }
+  
+  /* Responsive navigation */
+  .nav-responsive {
+    @apply flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4;
+  }
+  
+  /* Responsive modal */
+  .modal-responsive {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+  }
+  
+  .modal-content-responsive {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto;
+  }
+  
+  @media (min-width: 640px) {
+    .modal-content-responsive {
+      @apply max-w-lg;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .modal-content-responsive {
+      @apply max-w-2xl;
+    }
+  }
+  
+  /* Responsive sidebar */
+  .sidebar-responsive {
+    @apply fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform -translate-x-full transition-transform duration-300 ease-in-out;
+  }
+  
+  .sidebar-responsive.open {
+    @apply translate-x-0;
+  }
+  
+  @media (min-width: 1024px) {
+    .sidebar-responsive {
+      @apply translate-x-0 static shadow-none;
+    }
+  }
+  
+  /* Responsive header */
+  .header-responsive {
+    @apply flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0;
+  }
+  
+  /* Responsive stats grid */
+  .stats-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6;
+  }
+  
+  /* Responsive filters */
+  .filters-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+  
+  /* Responsive buttons */
+  .buttons-responsive {
+    @apply flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3;
+  }
+  
+  /* Responsive text alignment */
+  .text-responsive-center {
+    @apply text-center sm:text-left;
+  }
+  
+  /* Responsive visibility */
+  .mobile-only {
+    @apply block sm:hidden;
+  }
+  
+  .desktop-only {
+    @apply hidden sm:block;
+  }
+  
+  .tablet-only {
+    @apply hidden sm:block lg:hidden;
+  }
+  
+  /* Responsive overflow handling */
+  .overflow-responsive {
+    @apply overflow-x-auto overflow-y-visible;
+  }
+  
+  /* Responsive animations */
+  .animate-responsive {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  /* Responsive focus states */
+  .focus-responsive {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+  
+  /* Responsive hover states */
+  .hover-responsive {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200;
   }
 }
