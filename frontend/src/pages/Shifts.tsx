@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, Clock, Calendar, Users, DollarSign, Settings, Search, Filter, Download } from 'lucide-react'
+import { Plus, Clock, Calendar, Users, DollarSign } from 'lucide-react'
 import { shiftService } from '../services/api'
 import { DataTable } from '../components/tables/DataTable'
 import { FormField } from '../components/forms/FormField'
@@ -59,17 +59,6 @@ export function Shifts() {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('¿Estás seguro de eliminar este turno?')) return
-
-    try {
-      await shiftService.delete(id)
-      toast.success('Turno eliminado')
-      fetchShifts()
-    } catch (error) {
-      toast.error('Error eliminando turno')
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

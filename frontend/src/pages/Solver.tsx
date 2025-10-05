@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Play, Clock, CheckCircle, XCircle, Download, AlertTriangle, Zap, Brain, Target, TrendingUp, Calendar, Users, Settings, Sparkles } from 'lucide-react'
+import { Clock, CheckCircle, XCircle, Download, AlertTriangle, Zap, Brain, Target, TrendingUp, Calendar, Users, Settings, Sparkles } from 'lucide-react'
 import { solverService } from '../services/api'
 import { FormField } from '../components/forms/FormField'
 import { LoadingOptimization, LoadingSpinner } from '../components/LoadingStates'
