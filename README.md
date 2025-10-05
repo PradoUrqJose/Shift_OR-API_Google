@@ -269,9 +269,11 @@ Este proyecto contribuye al campo de la **Ingeniería de Sistemas** mediante:
 - **Backend API**: https://backend-restless-pond-1420.fly.dev
 - **Documentación API**: https://backend-restless-pond-1420.fly.dev/docs
 
-## 👨‍💻 Autor
+## 👨‍💻 Autores
 
-**José Prado Urquizo**  
+**Josue Chalco Pozo**
+**Diego Gonzales Tasayco**  
+**José Prado Urquiza**  
 Estudiante de Ingeniería de Sistemas  
 Universidad Nacional de Trujillo  
 2025
