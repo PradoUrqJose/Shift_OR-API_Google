@@ -221,10 +221,17 @@ async def execute_solver(run_id: str, constraints: dict, db: Session):
         
         # Actualizar resultado
         if run:
-            run.status = "completed" if success else "failed"
-            run.objective_value = metrics.get('objective_value', 0)
-            run.solve_time = metrics.get('solve_time', 0)
-            run.assignments_count = len(assignments)
+            if success:
+                run.status = "completed"
+                run.objective_value = metrics.get('objective_value', 0)
+                run.solve_time = metrics.get('solve_time', 0)
+                run.assignments_count = len(assignments)
+            else:
+                run.status = "failed"
+                # Guardar el error de validación en la base de datos
+                error_message = metrics.get('error', 'Error desconocido en la optimización')
+                log_error(run_id, None, f"Solver failed: {error_message}")
+            
             run.end_date = datetime.now()
             db.commit()
             
@@ -253,6 +260,31 @@ async def execute_solver(run_id: str, constraints: dict, db: Session):
             run.status = "failed"
             run.end_date = datetime.now()
             db.commit()
+            
+            # Guardar error en logs
+            log_error(run_id, None, f"Error ejecutando solver: {str(e)}")
         
-        # Log del error
-        await log_error(run_id, "system", str(e), str(e.__traceback__))
+@router.get("/runs/{run_id}/errors")
+async def get_solver_errors(
+    run_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtener errores de una ejecución específica
+    """
+    try:
+        # Obtener errores de la tabla error_logs
+        from app.database import supabase
+        
+        if supabase:
+            response = supabase.table('error_logs').select('*').eq('run_id', run_id).execute()
+            errors = response.data if response.data else []
+        else:
+            # Fallback: buscar en logs del sistema
+            errors = [{"message": "No se pudieron obtener los errores detallados", "created_at": datetime.now().isoformat()}]
+        
+        return {"errors": errors}
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo errores: {e}")
+        return {"errors": [{"message": f"Error obteniendo logs: {str(e)}", "created_at": datetime.now().isoformat()}]}

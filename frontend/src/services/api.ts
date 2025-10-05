@@ -53,6 +53,7 @@ export const solverService = {
   getRuns: () => api.get('/api/solver/runs'),
   getRun: (runId: string) => api.get(`/api/solver/runs/${runId}`),
   getAssignments: (runId: string) => api.get(`/api/solver/runs/${runId}/assignments`),
+  getErrors: (runId: string) => api.get(`/api/solver/runs/${runId}/errors`),
 }
 
 export const reportService = {

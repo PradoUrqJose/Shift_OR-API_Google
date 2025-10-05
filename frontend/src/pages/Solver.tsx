@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Play, Clock, CheckCircle, XCircle, Download } from 'lucide-react'
+import { Play, Clock, CheckCircle, XCircle, Download, AlertTriangle } from 'lucide-react'
 import { solverService } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -20,6 +20,9 @@ export function Solver() {
   const [loading, setLoading] = useState(true)
   const [solving, setSolving] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [selectedRun, setSelectedRun] = useState<SolverRun | null>(null)
+  const [errors, setErrors] = useState<any[]>([])
+  const [loadingErrors, setLoadingErrors] = useState(false)
 
   useEffect(() => {
     fetchRuns()
@@ -35,6 +38,24 @@ export function Solver() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchErrors = async (runId: string) => {
+    try {
+      setLoadingErrors(true)
+      const response = await solverService.getErrors(runId)
+      setErrors(response.data.errors || [])
+    } catch (error) {
+      toast.error('Error cargando errores')
+      setErrors([])
+    } finally {
+      setLoadingErrors(false)
+    }
+  }
+
+  const handleViewErrors = (run: SolverRun) => {
+    setSelectedRun(run)
+    fetchErrors(run.run_id)
   }
 
   const handleSolve = async (constraints: any) => {
@@ -176,6 +197,16 @@ export function Solver() {
                         Ver Reporte
                       </button>
                     )}
+                    
+                    {run.status === 'failed' && (
+                      <button
+                        onClick={() => handleViewErrors(run)}
+                        className="text-red-600 hover:text-red-800 flex items-center"
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        Ver Errores
+                      </button>
+                    )}
                   </div>
                 </div>
                 
@@ -208,6 +239,58 @@ export function Solver() {
           </div>
         )}
       </div>
+
+      {/* Errors Modal */}
+      {selectedRun && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                Errores de Optimización #{selectedRun.id}
+              </h3>
+              <button
+                onClick={() => {
+                  setSelectedRun(null)
+                  setErrors([])
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {loadingErrors ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              </div>
+            ) : errors.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No se encontraron errores detallados
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {errors.map((error, index) => (
+                  <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-red-800 font-medium">
+                          {error.message || 'Error desconocido'}
+                        </p>
+                        {error.created_at && (
+                          <p className="text-red-600 text-sm mt-1">
+                            {new Date(error.created_at).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
