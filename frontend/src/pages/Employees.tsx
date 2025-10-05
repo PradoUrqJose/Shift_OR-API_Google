@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, User } from 'lucide-react'
+import { Plus, Edit, Trash2, User, Mail, Phone, DollarSign, Badge, Search, Filter, Download } from 'lucide-react'
 import { employeeService } from '../services/api'
+import { DataTable } from '../components/tables/DataTable'
+import { FormField } from '../components/forms/FormField'
+import { SelectField } from '../components/forms/SelectField'
+import { LoadingTable, LoadingSpinner } from '../components/LoadingStates'
 import toast from 'react-hot-toast'
 
 interface Employee {
@@ -20,6 +24,16 @@ export function Employees() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    position: '',
+    skills: '',
+    hourly_rate: ''
+  })
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     fetchEmployees()
@@ -49,275 +63,276 @@ export function Employees() {
     }
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setFormErrors({})
+
+    try {
+      const employeeData = {
+        ...formData,
+        skills: formData.skills.split(',').map(s => s.trim()).filter(Boolean),
+        hourly_rate: parseFloat(formData.hourly_rate)
+      }
+
+      if (editingEmployee) {
+        await employeeService.update(editingEmployee.id, employeeData)
+        toast.success('Empleado actualizado')
+      } else {
+        await employeeService.create(employeeData)
+        toast.success('Empleado creado')
+      }
+
+      setShowForm(false)
+      setEditingEmployee(null)
+      setFormData({ name: '', email: '', phone: '', position: '', skills: '', hourly_rate: '' })
+      fetchEmployees()
+    } catch (error: any) {
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors)
+      } else {
+        toast.error('Error guardando empleado')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleEdit = (employee: Employee) => {
+    setEditingEmployee(employee)
+    setFormData({
+      name: employee.name,
+      email: employee.email,
+      phone: employee.phone || '',
+      position: employee.position || '',
+      skills: employee.skills.join(', '),
+      hourly_rate: employee.hourly_rate.toString()
+    })
+    setShowForm(true)
+  }
+
+  const handleCancel = () => {
+    setShowForm(false)
+    setEditingEmployee(null)
+    setFormData({ name: '', email: '', phone: '', position: '', skills: '', hourly_rate: '' })
+    setFormErrors({})
+  }
+
+  const handleExport = () => {
+    // Implementar exportación
+    toast.success('Exportando datos...')
+  }
+
+  const columns = [
+    {
+      key: 'name' as keyof Employee,
+      label: 'Nombre',
+      render: (value: string, row: Employee) => (
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center">
+            <User className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <div className="font-medium text-gray-900 dark:text-white">{value}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{row.position || 'Sin posición'}</div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'email' as keyof Employee,
+      label: 'Email',
+      render: (value: string) => (
+        <div className="flex items-center space-x-2">
+          <Mail className="h-4 w-4 text-gray-400" />
+          <span className="text-sm">{value}</span>
+        </div>
+      )
+    },
+    {
+      key: 'hourly_rate' as keyof Employee,
+      label: 'Tarifa/Hora',
+      render: (value: number) => (
+        <div className="flex items-center space-x-2">
+          <DollarSign className="h-4 w-4 text-green-500" />
+          <span className="font-medium text-green-600 dark:text-green-400">
+            ${value.toFixed(2)}
+          </span>
+        </div>
+      )
+    },
+    {
+      key: 'skills' as keyof Employee,
+      label: 'Habilidades',
+      render: (value: string[]) => (
+        <div className="flex flex-wrap gap-1">
+          {value.slice(0, 2).map((skill, index) => (
+            <span key={index} className="badge badge-info">
+              {skill}
+            </span>
+          ))}
+          {value.length > 2 && (
+            <span className="badge badge-gray">
+              +{value.length - 2}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'is_active' as keyof Employee,
+      label: 'Estado',
+      render: (value: boolean) => (
+        <span className={`badge ${value ? 'badge-success' : 'badge-danger'}`}>
+          {value ? 'Activo' : 'Inactivo'}
+        </span>
+      )
+    }
+  ]
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <LoadingTable />
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Empleados</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white transition-colors duration-300">
+            Empleados
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2 transition-colors duration-300">
             Gestiona la información de tus empleados
           </p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="btn btn-primary flex items-center"
+          className="btn btn-primary flex items-center space-x-2"
         >
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Empleado
+          <Plus className="h-5 w-5" />
+          <span>Nuevo Empleado</span>
         </button>
       </div>
 
-      {/* Employees Table */}
-      <div className="card">
-        <div className="overflow-x-auto">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Posición</th>
-                <th>Tarifa/Hora</th>
-                <th>Habilidades</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((employee) => (
-                <tr key={employee.id}>
-                  <td>
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                        <User className="h-4 w-4 text-primary-600" />
-                      </div>
-                      {employee.name}
-                    </div>
-                  </td>
-                  <td>{employee.email}</td>
-                  <td>{employee.position || 'N/A'}</td>
-                  <td>${employee.hourly_rate.toFixed(2)}</td>
-                  <td>
-                    <div className="flex flex-wrap gap-1">
-                      {employee.skills.slice(0, 2).map((skill, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                      {employee.skills.length > 2 && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                          +{employee.skills.length - 2}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        employee.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {employee.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => setEditingEmployee(employee)}
-                        className="text-primary-600 hover:text-primary-800"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(employee.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Data Table */}
+      <DataTable
+        data={employees}
+        columns={columns}
+        searchable={true}
+        sortable={true}
+        pagination={true}
+        pageSize={10}
+        onRowClick={handleEdit}
+        onExport={handleExport}
+        emptyMessage="No hay empleados registrados"
+      />
 
       {/* Employee Form Modal */}
       {showForm && (
-        <EmployeeForm
-          employee={editingEmployee}
-          onClose={() => {
-            setShowForm(false)
-            setEditingEmployee(null)
-          }}
-          onSave={() => {
-            fetchEmployees()
-            setShowForm(false)
-            setEditingEmployee(null)
-          }}
-        />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-bounce-in">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {editingEmployee ? 'Editar Empleado' : 'Nuevo Empleado'}
+                </h3>
+                <button
+                  onClick={handleCancel}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    label="Nombre"
+                    value={formData.name}
+                    onChange={(value) => setFormData({ ...formData, name: value })}
+                    error={formErrors.name}
+                    required
+                    icon={<User className="h-4 w-4" />}
+                    placeholder="Nombre completo"
+                  />
+                  
+                  <FormField
+                    label="Email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(value) => setFormData({ ...formData, email: value })}
+                    error={formErrors.email}
+                    required
+                    icon={<Mail className="h-4 w-4" />}
+                    placeholder="correo@ejemplo.com"
+                  />
+                  
+                  <FormField
+                    label="Teléfono"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(value) => setFormData({ ...formData, phone: value })}
+                    error={formErrors.phone}
+                    icon={<Phone className="h-4 w-4" />}
+                    placeholder="+1 234 567 8900"
+                  />
+                  
+                  <FormField
+                    label="Posición"
+                    value={formData.position}
+                    onChange={(value) => setFormData({ ...formData, position: value })}
+                    error={formErrors.position}
+                    icon={<Badge className="h-4 w-4" />}
+                    placeholder="Cargo o posición"
+                  />
+                  
+                  <FormField
+                    label="Habilidades"
+                    value={formData.skills}
+                    onChange={(value) => setFormData({ ...formData, skills: value })}
+                    error={formErrors.skills}
+                    helpText="Separar habilidades con comas"
+                    placeholder="Almacen, Ventas, Atención al Cliente"
+                  />
+                  
+                  <FormField
+                    label="Tarifa por Hora"
+                    type="number"
+                    value={formData.hourly_rate}
+                    onChange={(value) => setFormData({ ...formData, hourly_rate: value })}
+                    error={formErrors.hourly_rate}
+                    required
+                    icon={<DollarSign className="h-4 w-4" />}
+                    placeholder="0.00"
+                  />
+                </div>
+                
+                <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="btn btn-secondary"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="btn btn-primary flex items-center space-x-2"
+                  >
+                    {submitting && <LoadingSpinner size="sm" />}
+                    <span>{editingEmployee ? 'Actualizar' : 'Crear'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-// Componente de formulario de empleado
-function EmployeeForm({ 
-  employee, 
-  onClose, 
-  onSave 
-}: { 
-  employee?: Employee | null
-  onClose: () => void
-  onSave: () => void
-}) {
-  const [formData, setFormData] = useState({
-    name: employee?.name || '',
-    email: employee?.email || '',
-    phone: employee?.phone || '',
-    position: employee?.position || '',
-    skills: employee?.skills.join(', ') || '',
-    hourly_rate: employee?.hourly_rate || 0,
-  })
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    try {
-      const data = {
-        ...formData,
-        skills: formData.skills.split(',').map(s => s.trim()).filter(Boolean),
-      }
-
-      if (employee) {
-        await employeeService.update(employee.id, data)
-        toast.success('Empleado actualizado')
-      } else {
-        await employeeService.create(data)
-        toast.success('Empleado creado')
-      }
-      
-      onSave()
-    } catch (error) {
-      toast.error('Error guardando empleado')
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold mb-4">
-          {employee ? 'Editar Empleado' : 'Nuevo Empleado'}
-        </h3>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="input"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="input"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Teléfono
-            </label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="input"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Posición
-            </label>
-            <input
-              type="text"
-              value={formData.position}
-              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-              className="input"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Habilidades (separadas por comas)
-            </label>
-            <input
-              type="text"
-              value={formData.skills}
-              onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-              className="input"
-              placeholder="Ventas, Atención al cliente, Caja"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tarifa por Hora ($)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.hourly_rate}
-              onChange={(e) => setFormData({ ...formData, hourly_rate: parseFloat(e.target.value) || 0 })}
-              className="input"
-              min="0"
-            />
-          </div>
-          
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-secondary"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-            >
-              {employee ? 'Actualizar' : 'Crear'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
