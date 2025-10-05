@@ -219,6 +219,8 @@ async def execute_solver(run_id: str, constraints: dict, db: Session):
             employees_data, shifts_data, constraints
         )
         
+        logger.info(f"Solver result: success={success}, assignments={len(assignments)}, metrics={metrics}")
+        
         # Actualizar resultado
         if run:
             if success:
@@ -230,6 +232,7 @@ async def execute_solver(run_id: str, constraints: dict, db: Session):
                 run.status = "failed"
                 # Guardar el error de validación en la base de datos
                 error_message = metrics.get('error', 'Error desconocido en la optimización')
+                logger.error(f"Guardando error: {error_message}")
                 log_error(run_id, None, f"Solver failed: {error_message}")
             
             run.end_date = datetime.now()

@@ -50,7 +50,7 @@ async def init_db():
         raise
 
 # Función para log de errores
-async def log_error(run_id: str, user_id: str, message: str, stack: str = None):
+def log_error(run_id: str, user_id: str, message: str, stack: str = None):
     """Guardar error en tabla error_logs"""
     try:
         if supabase:
