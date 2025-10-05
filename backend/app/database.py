@@ -18,11 +18,13 @@ logger = structlog.get_logger()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-# Cliente Supabase
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+# Cliente Supabase (solo si las variables están configuradas)
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
+    supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 # Configuración SQLAlchemy
-DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql://postgres:{os.getenv('SUPABASE_DB_PASSWORD')}@{os.getenv('SUPABASE_DB_HOST')}:5432/postgres")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./sistema_turnos.db")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -51,15 +53,18 @@ async def init_db():
 async def log_error(run_id: str, user_id: str, message: str, stack: str = None):
     """Guardar error en tabla error_logs"""
     try:
-        error_data = {
-            "run_id": run_id,
-            "user_id": user_id,
-            "message": message,
-            "stack": stack,
-            "created_at": "now()"
-        }
-        
-        result = supabase.table("error_logs").insert(error_data).execute()
-        logger.info(f"Error logueado: {run_id}")
+        if supabase:
+            error_data = {
+                "run_id": run_id,
+                "user_id": user_id,
+                "message": message,
+                "stack": stack,
+                "created_at": "now()"
+            }
+            
+            result = supabase.table("error_logs").insert(error_data).execute()
+            logger.info(f"Error logueado: {run_id}")
+        else:
+            logger.info(f"Error (sin Supabase): {run_id} - {message}")
     except Exception as e:
         logger.error(f"Error guardando log: {e}")
