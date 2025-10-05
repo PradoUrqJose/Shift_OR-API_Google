@@ -1,0 +1,33 @@
+# FastAPI y dependencias
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Base de datos
+sqlalchemy==2.0.23
+alembic==1.12.1
+psycopg2-binary==2.9.9
+
+# Supabase
+supabase==2.3.0
+postgrest==0.13.0
+
+# OR-Tools
+ortools==9.14.6206
+
+# Utilidades
+pydantic[email]>=2.0.0
+python-dotenv==1.0.0
+httpx==0.25.2
+email-validator>=2.0.0
+
+# Notificaciones
+sendgrid==6.10.0
+
+# Storage (opcional)
+cloudinary==1.36.0
+
+# Logging y monitoreo
+structlog==23.2.0
