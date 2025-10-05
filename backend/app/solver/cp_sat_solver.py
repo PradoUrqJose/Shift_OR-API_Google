@@ -33,34 +33,124 @@ class CPSatSolver:
             Tuple[success, assignments, metrics]
         """
         try:
-            logger.info("Iniciando solver CP-SAT")
+            logger.info("=== INICIANDO SOLVER CP-SAT ===")
+            logger.info(f"Empleados disponibles: {len(employees)}")
+            logger.info(f"Turnos a asignar: {len(shifts)}")
+            logger.info(f"Período: {constraints['start_date']} a {constraints['end_date']}")
+            
+            # VALIDACIONES PREVIAS
+            validation_result = self._validate_inputs(employees, shifts, constraints)
+            if not validation_result['valid']:
+                logger.error(f"Validación fallida: {validation_result['error']}")
+                return False, [], {'error': validation_result['error']}
             
             # Crear variables de decisión
             assignments = self._create_decision_variables(employees, shifts, constraints)
+            logger.info(f"Variables de decisión creadas: {len(assignments)}")
             
             # Agregar restricciones
             self._add_constraints(assignments, employees, shifts, constraints)
+            logger.info("Restricciones agregadas al modelo")
             
             # Definir función objetivo
             self._set_objective(assignments, employees, shifts, constraints)
+            logger.info("Función objetivo definida")
             
             # Resolver
             logger.info("Ejecutando solver...")
             status = self.solver.Solve(self.model)
             
-            if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-                logger.info("Solución encontrada")
+            # ANALIZAR RESULTADO
+            if status == cp_model.OPTIMAL:
+                logger.info("✅ Solución óptima encontrada")
                 assignments_result = self._extract_assignments(assignments, employees, shifts, constraints)
                 metrics = self._calculate_metrics(assignments_result, employees, shifts)
-                
                 return True, assignments_result, metrics
+            elif status == cp_model.FEASIBLE:
+                logger.info("✅ Solución factible encontrada (no óptima)")
+                assignments_result = self._extract_assignments(assignments, employees, shifts, constraints)
+                metrics = self._calculate_metrics(assignments_result, employees, shifts)
+                return True, assignments_result, metrics
+            elif status == cp_model.INFEASIBLE:
+                error_msg = "❌ No hay solución factible - Restricciones muy estrictas"
+                logger.error(error_msg)
+                return False, [], {'error': error_msg, 'status': 'INFEASIBLE'}
+            elif status == cp_model.UNKNOWN:
+                error_msg = "❌ Solver no pudo determinar si hay solución"
+                logger.error(error_msg)
+                return False, [], {'error': error_msg, 'status': 'UNKNOWN'}
             else:
-                logger.warning("No se encontró solución factible")
-                return False, [], {}
+                error_msg = f"❌ Error desconocido del solver: {status}"
+                logger.error(error_msg)
+                return False, [], {'error': error_msg, 'status': str(status)}
                 
         except Exception as e:
-            logger.error(f"Error en solver: {e}")
-            return False, [], {}
+            error_msg = f"❌ Error en solver: {str(e)}"
+            logger.error(error_msg)
+            return False, [], {'error': error_msg}
+    
+    def _validate_inputs(self, employees, shifts, constraints):
+        """Validar entradas antes de resolver"""
+        errors = []
+        
+        # 1. Validar empleados
+        if not employees:
+            errors.append("No hay empleados disponibles")
+        else:
+            logger.info("=== ANÁLISIS DE EMPLEADOS ===")
+            for emp in employees:
+                logger.info(f"Empleado: {emp.get('name', 'Sin nombre')} - Habilidades: {emp.get('skills', [])}")
+        
+        # 2. Validar turnos
+        if not shifts:
+            errors.append("No hay turnos configurados")
+        else:
+            logger.info("=== ANÁLISIS DE TURNOS ===")
+            for shift in shifts:
+                logger.info(f"Turno: {shift.get('name', 'Sin nombre')} - Día: {shift.get('day_of_week')} - Habilidades: {shift.get('required_skills', [])}")
+        
+        # 3. Validar cobertura de turnos
+        if employees and shifts:
+            total_shifts_needed = 0
+            employees_by_skill = {}
+            
+            # Agrupar empleados por habilidad
+            for emp in employees:
+                skills = emp.get('skills', [])
+                for skill in skills:
+                    if skill not in employees_by_skill:
+                        employees_by_skill[skill] = []
+                    employees_by_skill[skill].append(emp['name'])
+            
+            logger.info(f"Empleados por habilidad: {employees_by_skill}")
+            
+            # Calcular turnos necesarios por habilidad
+            for shift in shifts:
+                required_skills = shift.get('required_skills', [])
+                min_employees = shift.get('min_employees', 1)
+                
+                for skill in required_skills:
+                    if skill not in employees_by_skill:
+                        errors.append(f"Turno '{shift.get('name')}' requiere habilidad '{skill}' pero no hay empleados con esa habilidad")
+                    else:
+                        available_employees = len(employees_by_skill[skill])
+                        if available_employees < min_employees:
+                            errors.append(f"Turno '{shift.get('name')}' necesita {min_employees} empleados con habilidad '{skill}' pero solo hay {available_employees}")
+                        total_shifts_needed += min_employees
+            
+            # Validar si hay suficientes empleados para cubrir todos los turnos
+            total_employee_capacity = len(employees) * 7  # 1 turno por día máximo
+            if total_shifts_needed > total_employee_capacity:
+                errors.append(f"Se necesitan {total_shifts_needed} asignaciones pero solo hay capacidad para {total_employee_capacity}")
+        
+        # 4. Validar fechas
+        if 'start_date' not in constraints or 'end_date' not in constraints:
+            errors.append("Fechas de inicio y fin son requeridas")
+        
+        return {
+            'valid': len(errors) == 0,
+            'error': '; '.join(errors) if errors else None
+        }
     
     def _create_decision_variables(self, employees, shifts, constraints):
         """Crear variables de decisión binarias"""
