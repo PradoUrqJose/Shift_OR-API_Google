@@ -12,7 +12,7 @@ psycopg2-binary==2.9.9
 
 # Supabase
 supabase==2.8.0
-postgrest==0.13.0
+postgrest>=0.14.0,<0.18.0
 
 # OR-Tools
 ortools==9.14.6206
