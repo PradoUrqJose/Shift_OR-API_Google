@@ -1,10 +1,7 @@
-"""
-Solver CP-SAT para optimización de turnos usando Google OR-Tools
-"""
 from ortools.sat.python import cp_model
 import structlog
-from typing import List, Dict, Any, Tuple
 from datetime import datetime, timedelta
+from typing import List, Dict, Any, Tuple
 import json
 
 logger = structlog.get_logger()
@@ -13,336 +10,145 @@ class CPSatSolver:
     def __init__(self):
         self.model = cp_model.CpModel()
         self.solver = cp_model.CpSolver()
-        self.solver.parameters.max_time_in_seconds = 300  # 5 minutos máximo
-        
+        self.solver.parameters.max_time_in_seconds = 60  # 1 minuto
+
     def solve_shift_scheduling(
-        self,
-        employees: List[Dict[str, Any]],
-        shifts: List[Dict[str, Any]],
-        constraints: Dict[str, Any]
+        self, employees: List[Dict[str, Any]], shifts: List[Dict[str, Any]], constraints: Dict[str, Any]
     ) -> Tuple[bool, List[Dict[str, Any]], Dict[str, Any]]:
-        """
-        Resuelve el problema de programación de turnos
-        
-        Args:
-            employees: Lista de empleados con disponibilidad
-            shifts: Lista de turnos a asignar
-            constraints: Restricciones del problema
-            
-        Returns:
-            Tuple[success, assignments, metrics]
-        """
         try:
-            logger.info("=== INICIANDO SOLVER CP-SAT ===")
-            logger.info(f"Empleados disponibles: {len(employees)}")
-            logger.info(f"Turnos a asignar: {len(shifts)}")
-            logger.info(f"Período: {constraints['start_date']} a {constraints['end_date']}")
-            
-            # VALIDACIONES PREVIAS
-            validation_result = self._validate_inputs(employees, shifts, constraints)
-            if not validation_result['valid']:
-                logger.error(f"Validación fallida: {validation_result['error']}")
-                return False, [], {'error': validation_result['error']}
-            
-            # Crear variables de decisión
-            assignments = self._create_decision_variables(employees, shifts, constraints)
-            logger.info(f"Variables de decisión creadas: {len(assignments)}")
-            
-            # Agregar restricciones
-            self._add_constraints(assignments, employees, shifts, constraints)
-            logger.info("Restricciones agregadas al modelo")
-            
-            # Definir función objetivo
-            self._set_objective(assignments, employees, shifts, constraints)
-            logger.info("Función objetivo definida")
-            
-            # Resolver
-            logger.info("Ejecutando solver...")
-            status = self.solver.Solve(self.model)
-            
-            # ANALIZAR RESULTADO
-            if status == cp_model.OPTIMAL:
-                logger.info("✅ Solución óptima encontrada")
-                assignments_result = self._extract_assignments(assignments, employees, shifts, constraints)
-                metrics = self._calculate_metrics(assignments_result, employees, shifts)
-                return True, assignments_result, metrics
-            elif status == cp_model.FEASIBLE:
-                logger.info("✅ Solución factible encontrada (no óptima)")
-                assignments_result = self._extract_assignments(assignments, employees, shifts, constraints)
-                metrics = self._calculate_metrics(assignments_result, employees, shifts)
-                return True, assignments_result, metrics
-            elif status == cp_model.INFEASIBLE:
-                error_msg = "❌ No hay solución factible - Restricciones muy estrictas"
-                logger.error(error_msg)
-                return False, [], {'error': error_msg, 'status': 'INFEASIBLE'}
-            elif status == cp_model.UNKNOWN:
-                error_msg = "❌ Solver no pudo determinar si hay solución"
-                logger.error(error_msg)
-                return False, [], {'error': error_msg, 'status': 'UNKNOWN'}
-            else:
-                error_msg = f"❌ Error desconocido del solver: {status}"
-                logger.error(error_msg)
-                return False, [], {'error': error_msg, 'status': str(status)}
-                
-        except Exception as e:
-            error_msg = f"❌ Error en solver: {str(e)}"
-            logger.error(error_msg)
-            return False, [], {'error': error_msg}
-    
-    def _validate_inputs(self, employees, shifts, constraints):
-        """Validar entradas antes de resolver"""
-        errors = []
-        
-        # 1. Validar empleados
-        if not employees:
-            errors.append("No hay empleados disponibles")
-        else:
-            logger.info("=== ANÁLISIS DE EMPLEADOS ===")
+            logger.info("🚀 Iniciando solver CP-SAT realista")
+
+            # Convertir fechas si vienen como string
+            start_date, end_date = self._parse_dates(constraints)
+            dates = list(self._get_date_range(start_date, end_date))
+
+            # Validación
+            if not employees or not shifts:
+                return False, [], {"error": "Faltan empleados o turnos"}
+
+            # Crear variables
+            assignments = {}
             for emp in employees:
-                logger.info(f"Empleado: {emp.get('name', 'Sin nombre')} - Habilidades: {emp.get('skills', [])}")
-        
-        # 2. Validar turnos
-        if not shifts:
-            errors.append("No hay turnos configurados")
-        else:
-            logger.info("=== ANÁLISIS DE TURNOS ===")
-            for shift in shifts:
-                logger.info(f"Turno: {shift.get('name', 'Sin nombre')} - Día: {shift.get('day_of_week')} - Habilidades: {shift.get('required_skills', [])}")
-        
-        # 3. Validar cobertura de turnos
-        if employees and shifts:
-            total_shifts_needed = 0
-            employees_by_skill = {}
-            
-            # Agrupar empleados por habilidad
+                for shift in shifts:
+                    for date in dates:
+                        name = f"E{emp['id']}_S{shift['id']}_{date.date()}"
+                        assignments[name] = self.model.NewBoolVar(name)
+
+            logger.info(f"Variables de decisión: {len(assignments)}")
+
+            # Restricción 1: Máx 1 turno por día por empleado
             for emp in employees:
-                skills = emp.get('skills', [])
-                for skill in skills:
-                    if skill not in employees_by_skill:
-                        employees_by_skill[skill] = []
-                    employees_by_skill[skill].append(emp['name'])
-            
-            logger.info(f"Empleados por habilidad: {employees_by_skill}")
-            
-            # Calcular turnos necesarios por habilidad
-            for shift in shifts:
-                required_skills = shift.get('required_skills', [])
-                min_employees = shift.get('min_employees', 1)
-                
-                for skill in required_skills:
-                    if skill not in employees_by_skill:
-                        errors.append(f"Turno '{shift.get('name')}' requiere habilidad '{skill}' pero no hay empleados con esa habilidad")
-                    else:
-                        available_employees = len(employees_by_skill[skill])
-                        if available_employees < min_employees:
-                            errors.append(f"Turno '{shift.get('name')}' necesita {min_employees} empleados con habilidad '{skill}' pero solo hay {available_employees}")
-                        total_shifts_needed += min_employees
-            
-            # Validar si hay suficientes empleados para cubrir todos los turnos
-            total_employee_capacity = len(employees) * 7  # 1 turno por día máximo
-            if total_shifts_needed > total_employee_capacity:
-                errors.append(f"Se necesitan {total_shifts_needed} asignaciones pero solo hay capacidad para {total_employee_capacity}")
-        
-        # 4. Validar fechas
-        if 'start_date' not in constraints or 'end_date' not in constraints:
-            errors.append("Fechas de inicio y fin son requeridas")
-        
-        return {
-            'valid': len(errors) == 0,
-            'error': '; '.join(errors) if errors else None
-        }
-    
-    def _create_decision_variables(self, employees, shifts, constraints):
-        """Crear variables de decisión binarias"""
-        assignments = {}
-        
-        for emp in employees:
-            for shift in shifts:
-                for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
-                    var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
-                    assignments[var_name] = self.model.NewBoolVar(var_name)
-        
-        return assignments
-    
-    def _add_constraints(self, assignments, employees, shifts, constraints):
-        """Agregar restricciones al modelo"""
-        
-        # 1. Restricción: Cada empleado puede trabajar máximo 1 turno por día
-        for emp in employees:
-            for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
-                day_assignments = [
-                    assignments[f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"]
-                    for shift in shifts
-                ]
-                self.model.Add(sum(day_assignments) <= 1)
-        
-        # 2. Restricción: Cada turno debe tener el mínimo de empleados requerido
-        # SOLO en los días configurados para ese turno
-        for shift in shifts:
-            shift_day_of_week = shift.get('day_of_week')  # 0-6 (lunes-domingo)
-            for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
-                day_of_week = day.weekday()  # 0-6 (lunes-domingo)
-                
-                # Si el turno no está configurado para este día, no asignar a nadie
-                if day_of_week != shift_day_of_week:
-                    for emp in employees:
-                        var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
-                        if var_name in assignments:
-                            self.model.Add(assignments[var_name] == 0)
-                else:
-                    # Solo asignar en días configurados
-                    shift_assignments = [
-                        assignments[f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"]
-                        for emp in employees
+                for date in dates:
+                    vars_day = [
+                        assignments[f"E{emp['id']}_S{shift['id']}_{date.date()}"]
+                        for shift in shifts
+                        if f"E{emp['id']}_S{shift['id']}_{date.date()}" in assignments
                     ]
-                    self.model.Add(sum(shift_assignments) >= shift.get('min_employees', 1))
-                    self.model.Add(sum(shift_assignments) <= shift.get('max_employees', 10))
-        
-        # 3. Restricción: Disponibilidad de empleados
-        for emp in employees:
-            availability = emp.get('availability', {})
-            for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
-                day_name = day.strftime('%A').lower()
-                if day_name in availability and not availability[day_name]:
-                    for shift in shifts:
-                        var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
-                        if var_name in assignments:
-                            self.model.Add(assignments[var_name] == 0)
-        
-        # 4. Restricción: Habilidades requeridas
-        for shift in shifts:
-            required_skills = shift.get('required_skills', [])
-            if required_skills:
-                for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
-                    for emp in employees:
-                        emp_skills = emp.get('skills', [])
-                        if not any(skill in emp_skills for skill in required_skills):
-                            var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
-                            if var_name in assignments:
-                                self.model.Add(assignments[var_name] == 0)
-        
-        # 5. Restricción: Balance de carga - distribuir turnos entre empleados (relajada)
-        for emp in employees:
-            emp_assignments = []
+                    if vars_day:
+                        self.model.Add(sum(vars_day) <= 1)
+
+            # Restricción 2: Cobertura mínima por turno
+            slack_penalties = []
             for shift in shifts:
-                for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
-                    var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
-                    if var_name in assignments:
-                        emp_assignments.append(assignments[var_name])
-            
-            if emp_assignments:
-                # Restricciones más flexibles: solo evitar que un empleado tenga todos los turnos
-                total_possible_assignments = len(emp_assignments)
-                max_assignments_per_employee = max(1, total_possible_assignments // 2)  # Máximo la mitad de los turnos
-                
-                self.model.Add(sum(emp_assignments) <= max_assignments_per_employee)
-    
-    def _set_objective(self, assignments, employees, shifts, constraints):
-        """Definir función objetivo"""
-        if constraints.get('minimize_cost', True):
-            # Minimizar costos + balance de carga
+                for date in dates:
+                    if date.weekday() == shift["day_of_week"]:
+                        vars_shift = [
+                            assignments[f"E{emp['id']}_S{shift['id']}_{date.date()}"]
+                            for emp in employees
+                        ]
+                        slack = self.model.NewIntVar(0, 10, f"slack_S{shift['id']}_{date.date()}")
+                        self.model.Add(sum(vars_shift) + slack >= shift["min_employees"])
+                        self.model.Add(sum(vars_shift) <= shift["max_employees"])
+                        slack_penalties.append(slack)
+
+            # Restricción 3: Habilidades requeridas
+            for emp in employees:
+                for shift in shifts:
+                    if not set(shift["required_skills"]).intersection(set(emp["skills"])):
+                        for date in dates:
+                            if f"E{emp['id']}_S{shift['id']}_{date.date()}" in assignments:
+                                self.model.Add(assignments[f"E{emp['id']}_S{shift['id']}_{date.date()}"] == 0)
+
+            # Restricción 4: Descanso mínimo de 12h entre turnos
+            for emp in employees:
+                for i in range(len(dates) - 1):
+                    d1, d2 = dates[i], dates[i + 1]
+                    shifts_emp_day1 = [
+                        assignments[f"E{emp['id']}_S{shift['id']}_{d1.date()}"]
+                        for shift in shifts if f"E{emp['id']}_S{shift['id']}_{d1.date()}" in assignments
+                    ]
+                    shifts_emp_day2 = [
+                        assignments[f"E{emp['id']}_S{shift['id']}_{d2.date()}"]
+                        for shift in shifts if f"E{emp['id']}_S{shift['id']}_{d2.date()}" in assignments
+                    ]
+                    if shifts_emp_day1 and shifts_emp_day2:
+                        self.model.Add(sum(shifts_emp_day1) + sum(shifts_emp_day2) <= 1)
+
+            # Restricción 5: Máx 6 días seguidos
+            for emp in employees:
+                for i in range(len(dates) - 6):
+                    window = dates[i:i+7]
+                    day_vars = [
+                        assignments[f"E{emp['id']}_S{shift['id']}_{d.date()}"]
+                        for shift in shifts for d in window
+                        if f"E{emp['id']}_S{shift['id']}_{d.date()}" in assignments
+                    ]
+                    if day_vars:
+                        self.model.Add(sum(day_vars) <= 6)
+
+            # Función objetivo: minimizar costo + penalización de slack + balance
             cost_terms = []
-            balance_terms = []
-            
-            # Términos de costo
             for emp in employees:
                 for shift in shifts:
-                    for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
-                        var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
-                        if var_name in assignments:
-                            cost = emp.get('hourly_rate', 0) * shift.get('cost_multiplier', 1.0)
-                            cost_terms.append(assignments[var_name] * cost)
-            
-            # Términos de balance de carga (penalizar empleados con muchos turnos)
-            for emp in employees:
-                emp_assignments = []
-                for shift in shifts:
-                    for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
-                        var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
-                        if var_name in assignments:
-                            emp_assignments.append(assignments[var_name])
-                
-                if emp_assignments:
-                    # Penalizar desbalance: usar suma simple en lugar de cuadrática
-                    total_assignments = sum(emp_assignments)
-                    balance_terms.append(total_assignments)
-            
-            # Combinar objetivos: costo + balance
-            total_cost = sum(cost_terms) if cost_terms else 0
-            total_balance = sum(balance_terms) if balance_terms else 0
-            
-            # Peso del balance (ajustable)
-            balance_weight = 0.1
-            self.model.Minimize(total_cost + balance_weight * total_balance)
-        else:
-            # Maximizar satisfacción de preferencias
-            satisfaction_terms = []
-            for emp in employees:
-                preferences = emp.get('preferences', {})
-                for shift in shifts:
-                    for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
-                        var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
-                        if var_name in assignments:
-                            preference_score = preferences.get(str(shift['id']), 0)
-                            satisfaction_terms.append(assignments[var_name] * preference_score)
-            
-            self.model.Maximize(sum(satisfaction_terms))
-    
-    def _extract_assignments(self, assignments, employees, shifts, constraints):
-        """Extraer asignaciones de la solución"""
+                    for date in dates:
+                        key = f"E{emp['id']}_S{shift['id']}_{date.date()}"
+                        if key in assignments:
+                            cost = emp["hourly_rate"] * shift["cost_multiplier"]
+                            cost_terms.append(assignments[key] * cost)
+
+            total_cost = sum(cost_terms)
+            slack_penalty = sum(slack_penalties)
+            self.model.Minimize(total_cost + 10 * slack_penalty)
+
+            # Resolver
+            status = self.solver.Solve(self.model)
+            if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
+                return True, self._extract(assignments, employees, shifts, dates), {
+                    "objective": self.solver.ObjectiveValue(),
+                    "status": "SUCCESS",
+                    "solve_time": self.solver.WallTime()
+                }
+
+            return False, [], {"error": "No hay solución factible", "status": "INFEASIBLE"}
+
+        except Exception as e:
+            return False, [], {"error": str(e)}
+
+    def _extract(self, assignments, employees, shifts, dates):
         result = []
-        
         for emp in employees:
             for shift in shifts:
-                for day in self._get_date_range(
-                    constraints['start_date'], 
-                    constraints['end_date']
-                ):
-                    var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
-                    if var_name in assignments and self.solver.Value(assignments[var_name]) == 1:
+                for date in dates:
+                    key = f"E{emp['id']}_S{shift['id']}_{date.date()}"
+                    if key in assignments and self.solver.Value(assignments[key]) == 1:
                         result.append({
-                            'employee_id': emp['id'],
-                            'shift_id': shift['id'],
-                            'date': day,
-                            'employee_name': emp['name'],
-                            'shift_name': shift['name']
+                            "employee_id": emp["id"],
+                            "employee_name": emp["name"],
+                            "shift_id": shift["id"],
+                            "shift_name": shift["name"],
+                            "date": date.isoformat()
                         })
-        
         return result
-    
-    def _calculate_metrics(self, assignments, employees, shifts):
-        """Calcular métricas de la solución"""
-        total_assignments = len(assignments)
-        total_employees = len(employees)
-        total_shifts = len(shifts)
-        
-        # Calcular cobertura
-        coverage = (total_assignments / (total_employees * total_shifts)) * 100 if total_employees * total_shifts > 0 else 0
-        
-        # Calcular balance de carga
-        employee_assignments = {}
-        for assignment in assignments:
-            emp_id = assignment['employee_id']
-            employee_assignments[emp_id] = employee_assignments.get(emp_id, 0) + 1
-        
-        if employee_assignments:
-            min_assignments = min(employee_assignments.values())
-            max_assignments = max(employee_assignments.values())
-            balance = (min_assignments / max_assignments) * 100 if max_assignments > 0 else 0
-        else:
-            balance = 0
-        
-        return {
-            'total_assignments': total_assignments,
-            'coverage_percentage': round(coverage, 2),
-            'load_balance': round(balance, 2),
-            'solve_time': self.solver.WallTime(),
-            'objective_value': self.solver.ObjectiveValue()
-        }
-    
-    def _get_date_range(self, start_date, end_date):
-        """Generar rango de fechas"""
-        current = start_date
-        while current <= end_date:
-            yield current
-            current += timedelta(days=1)
+
+    def _get_date_range(self, start, end):
+        cur = start
+        while cur <= end:
+            yield cur
+            cur += timedelta(days=1)
+
+    def _parse_dates(self, constraints):
+        s = constraints.get("start_date")
+        e = constraints.get("end_date")
+        s = datetime.fromisoformat(s.replace("Z", "+00:00")) if isinstance(s, str) else s
+        e = datetime.fromisoformat(e.replace("Z", "+00:00")) if isinstance(e, str) else e
+        return s, e
