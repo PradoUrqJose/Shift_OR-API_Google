@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, Clock } from 'lucide-react'
+import { Plus, Edit, Trash2, Clock, Calendar, Users, DollarSign, Settings, Search, Filter, Download } from 'lucide-react'
 import { shiftService } from '../services/api'
+import { DataTable } from '../components/tables/DataTable'
+import { FormField } from '../components/forms/FormField'
+import { SelectField } from '../components/forms/SelectField'
+import { LoadingTable, LoadingSpinner } from '../components/LoadingStates'
 import toast from 'react-hot-toast'
 
 interface Shift {
@@ -26,6 +30,18 @@ export function Shifts() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingShift, setEditingShift] = useState<Shift | null>(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    start_time: '',
+    end_time: '',
+    day_of_week: '',
+    required_skills: '',
+    min_employees: '',
+    max_employees: '',
+    cost_multiplier: ''
+  })
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     fetchShifts()
@@ -55,334 +71,327 @@ export function Shifts() {
     }
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setFormErrors({})
+
+    try {
+      const shiftData = {
+        ...formData,
+        day_of_week: parseInt(formData.day_of_week),
+        required_skills: formData.required_skills.split(',').map(s => s.trim()).filter(Boolean),
+        min_employees: parseInt(formData.min_employees),
+        max_employees: parseInt(formData.max_employees),
+        cost_multiplier: parseFloat(formData.cost_multiplier)
+      }
+
+      if (editingShift) {
+        await shiftService.update(editingShift.id, shiftData)
+        toast.success('Turno actualizado')
+      } else {
+        await shiftService.create(shiftData)
+        toast.success('Turno creado')
+      }
+
+      setShowForm(false)
+      setEditingShift(null)
+      setFormData({ 
+        name: '', start_time: '', end_time: '', day_of_week: '', 
+        required_skills: '', min_employees: '', max_employees: '', cost_multiplier: '' 
+      })
+      fetchShifts()
+    } catch (error: any) {
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors)
+      } else {
+        toast.error('Error guardando turno')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleEdit = (shift: Shift) => {
+    setEditingShift(shift)
+    setFormData({
+      name: shift.name,
+      start_time: shift.start_time,
+      end_time: shift.end_time,
+      day_of_week: shift.day_of_week.toString(),
+      required_skills: shift.required_skills.join(', '),
+      min_employees: shift.min_employees.toString(),
+      max_employees: shift.max_employees.toString(),
+      cost_multiplier: shift.cost_multiplier.toString()
+    })
+    setShowForm(true)
+  }
+
+  const handleCancel = () => {
+    setShowForm(false)
+    setEditingShift(null)
+    setFormData({ 
+      name: '', start_time: '', end_time: '', day_of_week: '', 
+      required_skills: '', min_employees: '', max_employees: '', cost_multiplier: '' 
+    })
+    setFormErrors({})
+  }
+
+  const handleExport = () => {
+    toast.success('Exportando datos...')
+  }
+
+  const columns = [
+    {
+      key: 'name' as keyof Shift,
+      label: 'Turno',
+      render: (value: string, row: Shift) => (
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+            <Clock className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <div className="font-medium text-gray-900 dark:text-white">{value}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {row.start_time} - {row.end_time}
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'day_of_week' as keyof Shift,
+      label: 'Día',
+      render: (value: number) => (
+        <span className="badge badge-info">
+          {DAYS[value]}
+        </span>
+      )
+    },
+    {
+      key: 'min_employees' as keyof Shift,
+      label: 'Personal',
+      render: (value: number, row: Shift) => (
+        <div className="flex items-center space-x-2">
+          <Users className="h-4 w-4 text-gray-400" />
+          <span className="text-sm">
+            {row.min_employees} - {row.max_employees}
+          </span>
+        </div>
+      )
+    },
+    {
+      key: 'required_skills' as keyof Shift,
+      label: 'Habilidades',
+      render: (value: string[]) => (
+        <div className="flex flex-wrap gap-1">
+          {value.slice(0, 2).map((skill, index) => (
+            <span key={index} className="badge badge-warning">
+              {skill}
+            </span>
+          ))}
+          {value.length > 2 && (
+            <span className="badge badge-gray">
+              +{value.length - 2}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'cost_multiplier' as keyof Shift,
+      label: 'Multiplicador',
+      render: (value: number) => (
+        <div className="flex items-center space-x-2">
+          <DollarSign className="h-4 w-4 text-green-500" />
+          <span className="font-medium text-green-600 dark:text-green-400">
+            {value}x
+          </span>
+        </div>
+      )
+    },
+    {
+      key: 'is_active' as keyof Shift,
+      label: 'Estado',
+      render: (value: boolean) => (
+        <span className={`badge ${value ? 'badge-success' : 'badge-danger'}`}>
+          {value ? 'Activo' : 'Inactivo'}
+        </span>
+      )
+    }
+  ]
+
+  const dayOptions = DAYS.map((day, index) => ({
+    value: index.toString(),
+    label: day
+  }))
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <LoadingTable />
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Turnos</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white transition-colors duration-300">
+            Turnos
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2 transition-colors duration-300">
             Configura los turnos de trabajo disponibles
           </p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="btn btn-primary flex items-center"
+          className="btn btn-primary flex items-center space-x-2"
         >
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Turno
+          <Plus className="h-5 w-5" />
+          <span>Nuevo Turno</span>
         </button>
       </div>
 
-      {/* Shifts Table */}
-      <div className="card">
-        <div className="overflow-x-auto">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Horario</th>
-                <th>Día</th>
-                <th>Personal</th>
-                <th>Habilidades</th>
-                <th>Multiplicador</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shifts.map((shift) => (
-                <tr key={shift.id}>
-                  <td>
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                        <Clock className="h-4 w-4 text-primary-600" />
-                      </div>
-                      {shift.name}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="text-sm">
-                      <div className="font-medium">{shift.start_time} - {shift.end_time}</div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                      {DAYS[shift.day_of_week]}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="text-sm">
-                      {shift.min_employees} - {shift.max_employees} empleados
-                    </div>
-                  </td>
-                  <td>
-                    <div className="flex flex-wrap gap-1">
-                      {shift.required_skills.slice(0, 2).map((skill, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                      {shift.required_skills.length > 2 && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                          +{shift.required_skills.length - 2}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <span className="text-sm font-medium">
-                      {shift.cost_multiplier}x
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        shift.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {shift.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => setEditingShift(shift)}
-                        className="text-primary-600 hover:text-primary-800"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(shift.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Data Table */}
+      <DataTable
+        data={shifts}
+        columns={columns}
+        searchable={true}
+        sortable={true}
+        pagination={true}
+        pageSize={10}
+        onRowClick={handleEdit}
+        onExport={handleExport}
+        emptyMessage="No hay turnos configurados"
+      />
 
       {/* Shift Form Modal */}
       {showForm && (
-        <ShiftForm
-          shift={editingShift}
-          onClose={() => {
-            setShowForm(false)
-            setEditingShift(null)
-          }}
-          onSave={() => {
-            fetchShifts()
-            setShowForm(false)
-            setEditingShift(null)
-          }}
-        />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-bounce-in">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {editingShift ? 'Editar Turno' : 'Nuevo Turno'}
+                </h3>
+                <button
+                  onClick={handleCancel}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    label="Nombre del Turno"
+                    value={formData.name}
+                    onChange={(value) => setFormData({ ...formData, name: value })}
+                    error={formErrors.name}
+                    required
+                    icon={<Clock className="h-4 w-4" />}
+                    placeholder="Turno Mañana"
+                  />
+                  
+                  <SelectField
+                    label="Día de la Semana"
+                    options={dayOptions}
+                    value={formData.day_of_week}
+                    onChange={(value) => setFormData({ ...formData, day_of_week: value })}
+                    error={formErrors.day_of_week}
+                    required
+                    placeholder="Seleccionar día"
+                  />
+                  
+                  <FormField
+                    label="Hora de Inicio"
+                    type="time"
+                    value={formData.start_time}
+                    onChange={(value) => setFormData({ ...formData, start_time: value })}
+                    error={formErrors.start_time}
+                    required
+                    icon={<Calendar className="h-4 w-4" />}
+                  />
+                  
+                  <FormField
+                    label="Hora de Fin"
+                    type="time"
+                    value={formData.end_time}
+                    onChange={(value) => setFormData({ ...formData, end_time: value })}
+                    error={formErrors.end_time}
+                    required
+                    icon={<Calendar className="h-4 w-4" />}
+                  />
+                  
+                  <FormField
+                    label="Mínimo de Empleados"
+                    type="number"
+                    value={formData.min_employees}
+                    onChange={(value) => setFormData({ ...formData, min_employees: value })}
+                    error={formErrors.min_employees}
+                    required
+                    icon={<Users className="h-4 w-4" />}
+                    placeholder="1"
+                  />
+                  
+                  <FormField
+                    label="Máximo de Empleados"
+                    type="number"
+                    value={formData.max_employees}
+                    onChange={(value) => setFormData({ ...formData, max_employees: value })}
+                    error={formErrors.max_employees}
+                    required
+                    icon={<Users className="h-4 w-4" />}
+                    placeholder="5"
+                  />
+                  
+                  <FormField
+                    label="Habilidades Requeridas"
+                    value={formData.required_skills}
+                    onChange={(value) => setFormData({ ...formData, required_skills: value })}
+                    error={formErrors.required_skills}
+                    helpText="Separar habilidades con comas"
+                    placeholder="Almacen, Ventas, Atención al Cliente"
+                  />
+                  
+                  <FormField
+                    label="Multiplicador de Costo"
+                    type="number"
+                    value={formData.cost_multiplier}
+                    onChange={(value) => setFormData({ ...formData, cost_multiplier: value })}
+                    error={formErrors.cost_multiplier}
+                    required
+                    icon={<DollarSign className="h-4 w-4" />}
+                    placeholder="1.0"
+                    helpText="Factor de costo del turno (1.0 = normal, 1.5 = 50% más caro)"
+                  />
+                </div>
+                
+                <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="btn btn-secondary"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="btn btn-primary flex items-center space-x-2"
+                  >
+                    {submitting && <LoadingSpinner size="sm" />}
+                    <span>{editingShift ? 'Actualizar' : 'Crear'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-// Componente de formulario de turno
-function ShiftForm({ 
-  shift, 
-  onClose, 
-  onSave 
-}: { 
-  shift?: Shift | null
-  onClose: () => void
-  onSave: () => void
-}) {
-  const [formData, setFormData] = useState({
-    name: shift?.name || '',
-    start_time: shift?.start_time || '08:00',
-    end_time: shift?.end_time || '16:00',
-    day_of_week: shift?.day_of_week || 0,
-    required_skills: shift?.required_skills.join(', ') || '',
-    min_employees: shift?.min_employees || 1,
-    max_employees: shift?.max_employees || 1,
-    cost_multiplier: shift?.cost_multiplier || 1.0,
-  })
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    try {
-      const data = {
-        ...formData,
-        required_skills: formData.required_skills.split(',').map(s => s.trim()).filter(Boolean),
-      }
-
-      if (shift) {
-        await shiftService.update(shift.id, data)
-        toast.success('Turno actualizado')
-      } else {
-        await shiftService.create(data)
-        toast.success('Turno creado')
-      }
-      
-      onSave()
-    } catch (error) {
-      toast.error('Error guardando turno')
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold mb-4">
-          {shift ? 'Editar Turno' : 'Nuevo Turno'}
-        </h3>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre del Turno
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="input"
-              placeholder="Turno Mañana"
-              required
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Hora de Inicio
-              </label>
-              <input
-                type="time"
-                value={formData.start_time}
-                onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                className="input"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Hora de Fin
-              </label>
-              <input
-                type="time"
-                value={formData.end_time}
-                onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                className="input"
-                required
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Día de la Semana
-            </label>
-            <select
-              value={formData.day_of_week}
-              onChange={(e) => setFormData({ ...formData, day_of_week: parseInt(e.target.value) })}
-              className="input"
-              required
-            >
-              {DAYS.map((day, index) => (
-                <option key={index} value={index}>
-                  {day}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Habilidades Requeridas (separadas por comas)
-            </label>
-            <input
-              type="text"
-              value={formData.required_skills}
-              onChange={(e) => setFormData({ ...formData, required_skills: e.target.value })}
-              className="input"
-              placeholder="Ventas, Atención al cliente"
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mín. Empleados
-              </label>
-              <input
-                type="number"
-                value={formData.min_employees}
-                onChange={(e) => setFormData({ ...formData, min_employees: parseInt(e.target.value) || 1 })}
-                className="input"
-                min="1"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Máx. Empleados
-              </label>
-              <input
-                type="number"
-                value={formData.max_employees}
-                onChange={(e) => setFormData({ ...formData, max_employees: parseInt(e.target.value) || 1 })}
-                className="input"
-                min="1"
-                required
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Multiplicador de Costo
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              value={formData.cost_multiplier}
-              onChange={(e) => setFormData({ ...formData, cost_multiplier: parseFloat(e.target.value) || 1.0 })}
-              className="input"
-              min="0.1"
-              required
-            />
-          </div>
-          
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-secondary"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-            >
-              {shift ? 'Actualizar' : 'Crear'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
