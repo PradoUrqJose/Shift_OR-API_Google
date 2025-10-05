@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 from app.routers import auth, employees, shifts, solver, reports
 from app.database import init_db
 
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
+
+
 # Cargar variables de entorno
 load_dotenv()
 
@@ -20,10 +23,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.add_middleware(ProxyHeadersMiddleware)
+
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://*.vercel.app", "https://shift-or-api-google.vercel.app", "https://shift-or-api-google-git-main-bertos-projects-32566259.vercel.app", "https://sistema-turnos-frontend.vercel.app", "https://sistema-programacion-turnos-frontend.vercel.app"],
+    allow_origins=["http://localhost:3000", "https://*.vercel.app", "https://shift-or-api-google.vercel.app", "https://sistema-turnos-frontend.vercel.app", "https://sistema-programacion-turnos-frontend.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
