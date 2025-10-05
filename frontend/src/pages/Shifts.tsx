@@ -160,7 +160,7 @@ export function Shifts() {
     {
       key: 'min_employees' as keyof Shift,
       label: 'Personal',
-      render: (value: number, row: Shift) => (
+      render: (_: number, row: Shift) => (
         <div className="flex items-center space-x-2">
           <Users className="h-4 w-4 text-gray-400" />
           <span className="text-sm">
