@@ -1,4 +1,4 @@
-import { useState, forwardRef } from 'react'
+import { useState } from 'react'
 import { ChevronDown, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface SelectOption {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, User, Mail, Phone, DollarSign, Badge, Search, Filter, Download } from 'lucide-react'
+import { Plus, User, Mail, Phone, DollarSign, Badge } from 'lucide-react'
 import { employeeService } from '../services/api'
 import { DataTable } from '../components/tables/DataTable'
 import { FormField } from '../components/forms/FormField'
