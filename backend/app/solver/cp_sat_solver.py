@@ -221,7 +221,7 @@ class CPSatSolver:
                             if var_name in assignments:
                                 self.model.Add(assignments[var_name] == 0)
         
-        # 5. Restricción: Balance de carga - distribuir turnos entre empleados
+        # 5. Restricción: Balance de carga - distribuir turnos entre empleados (relajada)
         for emp in employees:
             emp_assignments = []
             for shift in shifts:
@@ -231,13 +231,11 @@ class CPSatSolver:
                         emp_assignments.append(assignments[var_name])
             
             if emp_assignments:
-                # Cada empleado debe tener al menos 1 turno si hay suficientes turnos
+                # Restricciones más flexibles: solo evitar que un empleado tenga todos los turnos
                 total_possible_assignments = len(emp_assignments)
-                min_assignments = max(1, total_possible_assignments // len(employees))
-                max_assignments = min(total_possible_assignments, min_assignments + 2)
+                max_assignments_per_employee = max(1, total_possible_assignments // 2)  # Máximo la mitad de los turnos
                 
-                self.model.Add(sum(emp_assignments) >= min_assignments)
-                self.model.Add(sum(emp_assignments) <= max_assignments)
+                self.model.Add(sum(emp_assignments) <= max_assignments_per_employee)
     
     def _set_objective(self, assignments, employees, shifts, constraints):
         """Definir función objetivo"""
