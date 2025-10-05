@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Users, Clock, Calculator, TrendingUp, Sparkles, Zap, Target, BarChart3 } from 'lucide-react'
+import { Users, Clock, Calculator, TrendingUp, Sparkles } from 'lucide-react'
 // import { api } from '../services/api'
 
 interface DashboardStats {

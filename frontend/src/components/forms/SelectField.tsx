@@ -22,21 +22,20 @@ interface SelectFieldProps {
   searchable?: boolean
 }
 
-export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
-  ({ 
-    label, 
-    options, 
-    value, 
-    onChange, 
-    placeholder = 'Seleccionar...',
-    error, 
-    success, 
-    required = false, 
-    disabled = false,
-    className = '',
-    helpText,
-    searchable = false
-  }, ref) => {
+export const SelectField: React.FC<SelectFieldProps> = ({
+  label, 
+  options, 
+  value, 
+  onChange, 
+  placeholder = 'Seleccionar...',
+  error, 
+  success, 
+  required = false, 
+  disabled = false,
+  className = '',
+  helpText,
+  searchable = false
+}) => {
     const [isOpen, setIsOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [isFocused, setIsFocused] = useState(false)
@@ -172,6 +171,3 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
       </div>
     )
   }
-)
-
-SelectField.displayName = 'SelectField'

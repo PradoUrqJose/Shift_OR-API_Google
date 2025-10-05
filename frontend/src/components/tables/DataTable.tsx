@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Search, Filter, Download, MoreHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Download } from 'lucide-react'
 
 interface Column<T> {
   key: keyof T

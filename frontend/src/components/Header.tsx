@@ -1,5 +1,5 @@
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, User, Bell, Settings } from 'lucide-react'
+import { LogOut, User, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { ThemeToggle } from './ThemeToggle'
 import { NotificationCenter } from './NotificationCenter'
