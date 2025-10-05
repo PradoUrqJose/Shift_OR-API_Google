@@ -68,7 +68,7 @@ export function Dashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="card card-elevated group hover:scale-105 transition-all duration-300">
+        <div className="card card-elevated group hover:scale-105 transition-all duration-300 animate-fade-in-up animate-stagger-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg group-hover:shadow-xl transition-shadow duration-300">
@@ -86,7 +86,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="card card-elevated group hover:scale-105 transition-all duration-300">
+        <div className="card card-elevated group hover:scale-105 transition-all duration-300 animate-fade-in-up animate-stagger-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg group-hover:shadow-xl transition-shadow duration-300">
@@ -104,7 +104,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="card card-elevated group hover:scale-105 transition-all duration-300">
+        <div className="card card-elevated group hover:scale-105 transition-all duration-300 animate-fade-in-up animate-stagger-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg group-hover:shadow-xl transition-shadow duration-300">
@@ -122,7 +122,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="card card-elevated group hover:scale-105 transition-all duration-300">
+        <div className="card card-elevated group hover:scale-105 transition-all duration-300 animate-fade-in-up animate-stagger-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="p-3 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg group-hover:shadow-xl transition-shadow duration-300">
