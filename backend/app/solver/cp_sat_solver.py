@@ -220,12 +220,33 @@ class CPSatSolver:
                             var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
                             if var_name in assignments:
                                 self.model.Add(assignments[var_name] == 0)
+        
+        # 5. Restricción: Balance de carga - distribuir turnos entre empleados
+        for emp in employees:
+            emp_assignments = []
+            for shift in shifts:
+                for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
+                    var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
+                    if var_name in assignments:
+                        emp_assignments.append(assignments[var_name])
+            
+            if emp_assignments:
+                # Cada empleado debe tener al menos 1 turno si hay suficientes turnos
+                total_possible_assignments = len(emp_assignments)
+                min_assignments = max(1, total_possible_assignments // len(employees))
+                max_assignments = min(total_possible_assignments, min_assignments + 2)
+                
+                self.model.Add(sum(emp_assignments) >= min_assignments)
+                self.model.Add(sum(emp_assignments) <= max_assignments)
     
     def _set_objective(self, assignments, employees, shifts, constraints):
         """Definir función objetivo"""
         if constraints.get('minimize_cost', True):
-            # Minimizar costos
+            # Minimizar costos + balance de carga
             cost_terms = []
+            balance_terms = []
+            
+            # Términos de costo
             for emp in employees:
                 for shift in shifts:
                     for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
@@ -234,7 +255,27 @@ class CPSatSolver:
                             cost = emp.get('hourly_rate', 0) * shift.get('cost_multiplier', 1.0)
                             cost_terms.append(assignments[var_name] * cost)
             
-            self.model.Minimize(sum(cost_terms))
+            # Términos de balance de carga (penalizar empleados con muchos turnos)
+            for emp in employees:
+                emp_assignments = []
+                for shift in shifts:
+                    for day in self._get_date_range(constraints['start_date'], constraints['end_date']):
+                        var_name = f"emp_{emp['id']}_shift_{shift['id']}_day_{day}"
+                        if var_name in assignments:
+                            emp_assignments.append(assignments[var_name])
+                
+                if emp_assignments:
+                    # Penalizar desbalance: (suma de turnos)^2
+                    total_assignments = sum(emp_assignments)
+                    balance_terms.append(total_assignments * total_assignments)
+            
+            # Combinar objetivos: costo + balance
+            total_cost = sum(cost_terms) if cost_terms else 0
+            total_balance = sum(balance_terms) if balance_terms else 0
+            
+            # Peso del balance (ajustable)
+            balance_weight = 0.1
+            self.model.Minimize(total_cost + balance_weight * total_balance)
         else:
             # Maximizar satisfacción de preferencias
             satisfaction_terms = []
