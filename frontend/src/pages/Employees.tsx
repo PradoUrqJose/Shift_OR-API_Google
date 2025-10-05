@@ -3,7 +3,6 @@ import { Plus, User, Mail, Phone, DollarSign, Badge } from 'lucide-react'
 import { employeeService } from '../services/api'
 import { DataTable } from '../components/tables/DataTable'
 import { FormField } from '../components/forms/FormField'
-import { SelectField } from '../components/forms/SelectField'
 import { LoadingTable, LoadingSpinner } from '../components/LoadingStates'
 import toast from 'react-hot-toast'
 
@@ -51,17 +50,6 @@ export function Employees() {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('¿Estás seguro de eliminar este empleado?')) return
-
-    try {
-      await employeeService.delete(id)
-      toast.success('Empleado eliminado')
-      fetchEmployees()
-    } catch (error) {
-      toast.error('Error eliminando empleado')
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

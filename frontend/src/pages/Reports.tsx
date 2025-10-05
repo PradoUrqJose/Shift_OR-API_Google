@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, Printer, BarChart3, TrendingUp, Users, Clock, Target, FileText, Calendar, PieChart, Activity } from 'lucide-react'
+import { Download, Printer, BarChart3, TrendingUp, Users, Clock, Target, FileText, Calendar, Activity } from 'lucide-react'
 import { solverService, reportService } from '../services/api'
 import { LoadingTable, LoadingSpinner } from '../components/LoadingStates'
 import toast from 'react-hot-toast'
@@ -537,11 +537,6 @@ export function Reports() {
                       <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-6">
                         <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-4">Distribución por Empleado</h4>
                         <div className="space-y-2">
-                          {selectedRun.assignments.reduce((acc, assignment) => {
-                            const name = assignment.employee_name || 'N/A'
-                            acc[name] = (acc[name] || 0) + 1
-                            return acc
-                          }, {} as Record<string, number>)}
                           {Object.entries(selectedRun.assignments.reduce((acc, assignment) => {
                             const name = assignment.employee_name || 'N/A'
                             acc[name] = (acc[name] || 0) + 1
