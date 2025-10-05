@@ -265,9 +265,9 @@ class CPSatSolver:
                             emp_assignments.append(assignments[var_name])
                 
                 if emp_assignments:
-                    # Penalizar desbalance: (suma de turnos)^2
+                    # Penalizar desbalance: usar suma simple en lugar de cuadrática
                     total_assignments = sum(emp_assignments)
-                    balance_terms.append(total_assignments * total_assignments)
+                    balance_terms.append(total_assignments)
             
             # Combinar objetivos: costo + balance
             total_cost = sum(cost_terms) if cost_terms else 0
