@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, Printer, FileText, Calendar } from 'lucide-react'
+import { Download, Printer } from 'lucide-react'
 import { solverService, reportService } from '../services/api'
 import toast from 'react-hot-toast'
 import * as XLSX from 'xlsx'

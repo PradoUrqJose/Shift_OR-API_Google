@@ -40,7 +40,7 @@ export function Solver() {
   const handleSolve = async (constraints: any) => {
     try {
       setSolving(true)
-      const response = await solverService.solve(constraints)
+      await solverService.solve(constraints)
       toast.success('Optimización iniciada')
       setShowForm(false)
       fetchRuns()

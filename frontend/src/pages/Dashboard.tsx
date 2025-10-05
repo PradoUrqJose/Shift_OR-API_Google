@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Users, Clock, Calculator, TrendingUp } from 'lucide-react'
-import { api } from '../services/api'
+// import { api } from '../services/api'
 
 interface DashboardStats {
   totalEmployees: number
