@@ -1,9 +1,3 @@
-# Sistema de Programación de Turnos - Optimización con OR-Tools CP-SAT
-
-## 🎓 Tesis de Ingeniería de Sistemas
-
-**Título**: "INFLUENCIA DE UN SISTEMA WEB BASADO EN UN SOLVER HÍBRIDO DE PROGRAMACIÓN POR RESTRICCIONES Y SAT (CP-SAT) EN LA OPTIMIZACIÓN DEL PROCESO DE PROGRAMACIÓN DE TURNOS EN UNA EMPRESA RETAIL DE TRUJILLO, 2025"
-
 ---
 
 ## 📋 Resumen Ejecutivo
